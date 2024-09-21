@@ -51,7 +51,7 @@ bool isFatalError = false;
 static FATFS fs;
 char *romName;
 
-static bool fps_enabled = false;
+static bool fps_enabled = true;
 static uint32_t start_tick_us = 0;
 static uint32_t fps = 0;
 static char fpsString[3] = "00";
@@ -73,9 +73,13 @@ bool reset = false;
 #define NORENDER 0 // 0 is render frames in emulation loop
 #endif
 
+#define USPERFRAME 16666 // 60fps
+//#define CPUFREQ 252000
+#define CPUFREQ 260000
+//#define CPUFREQ 348000
 namespace
 {
-    constexpr uint32_t CPUFreqKHz = 252000; // 252000;
+    constexpr uint32_t CPUFreqKHz = CPUFREQ; // 252000;
 
     constexpr dvi::Config dviConfig_PicoDVI = {
         .pinTMDS = {10, 12, 14},
@@ -507,6 +511,7 @@ void __not_in_flash_func(infogb_plot_line)(uint_fast8_t line)
     // whene a scanline is skipped, copy current line buffer to the skipped line.
     if (line - 1 != prevline)
     {
+        //printf("line skipped %d\n", line - 1);
         auto b = dvi_->getLineBuffer();
         WORD *buffer = b->data();
         WORD *currentLineBuffer = currentLineBuffer_->data();
@@ -540,6 +545,13 @@ void __not_in_flash_func(process)()
         emu_run_frame();
         ti2 = time_us();
         frametime = ti2 - ti1;
+        // Try to maintain 60pfs
+        // Does not work, screen flickers
+        if (frametime < USPERFRAME)
+        {
+            //printf("frametime: %d\n", frametime);
+            //busy_wait_us(USPERFRAME - frametime);
+        }
         fcount++;
         ProcessAfterFrameIsRendered(false);
     }
